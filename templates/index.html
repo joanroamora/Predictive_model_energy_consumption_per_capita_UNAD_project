@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herramienta Analítica para la Proyección de Consumo Energético Per Cápita</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div id="header-image">
+        <img src="{{ url_for('static', filename='images/unad.png') }}" alt="UNAD Banner">
+    </div>
+
+    <div class="container">
+        <h1>Horizonte 2050: Sistema web de análisis predictivo del consumo eléctrico per cápita global - Proyecciones y tendencias mediante modelos de regresión lineal avanzados"</h1>
+        <button id="prepare-data">Preparar Datos</button>
+        <div id="loading" style="display:none;">
+            <div class="loader"></div>
+        </div>
+        <div id="message-area"></div>
+        <div class="selectors">
+            <select id="country-selector">
+                <option value="">Seleccione un país</option>
+                {% for country in countries %}
+                <option value="{{ country }}">{{ country }}</option>
+                {% endfor %}
+            </select>            
+            
+            <select id="year-selector">
+                <option value="">Seleccione un año</option>
+                {% for year in range(2024, 2051) %} <!-- El rango termina en 2051 porque range no incluye el último valor -->
+                <option value="{{ year }}">{{ year }}</option>
+                {% endfor %}
+            </select>
+            
+        </div>
+        <button id="predict">Predicción</button>
+    </div>
+    <script>
+        document.getElementById('prepare-data').addEventListener('click', function() {
+            document.getElementById('message-area').innerHTML = '<div class="loader"></div><p class="loading-text">Cargando el dataset histórico y generando dataframe...</p>';
+            fetch('/prepare_data', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('message-area').innerHTML = '<div class="loader"></div><p class="loading-text">Aplicando método de imputación - sustitución por media...</p>';
+                setTimeout(() => {
+                    document.getElementById('message-area').innerHTML = '<p>' + data.message + '</p>';
+                    updateCountries(); // Función para actualizar los países
+                }, 5000);
+            })
+            .catch(error => {
+                document.getElementById('message-area').innerHTML = '<p>Error: ' + error + '</p>';
+            });
+        });
+        
+        function updateCountries() {
+            fetch('/get_countries')
+            .then(response => response.json())
+            .then(data => {
+                let selector = document.getElementById('country-selector');
+                selector.innerHTML = '<option value="">Seleccione un país</option>';
+                data.countries.forEach(function(country) {
+                    selector.innerHTML += '<option value="' + country[0] + '">' + country[0] + ' - ' + country[1] + '</option>';
+                });
+            })
+            .catch(error => {
+                console.log('Error fetching countries:', error);
+            });
+        }
+        document.getElementById('predict').addEventListener('click', function() {
+        var year = document.getElementById('year-selector').value;
+        var country = document.getElementById('country-selector').value;
+        if (!year || !country) {
+            alert('Debe seleccionar año y país');
+            return;
+        }
+        
+        var formData = new FormData();
+        formData.append('year', year);
+        formData.append('country', country);
+
+        fetch('/predict', { method: 'POST', body: formData })
+        .then(response => response.json())
+
+
+        .then(data => {
+            if (data.error) {
+        document.getElementById('message-area').innerHTML = '<p>' + data.error + '</p>';
+            } else {
+        document.getElementById('message-area').innerHTML = '<div class="result-text">' + data.message + '</div>';
+        document.getElementById('message-area').innerHTML += '<img src="' + data.image_path + '" alt="Energy Projection Chart">';
+        }
+        })
+        });
+        </script>
+        <h3>"Proyecto aplicado. Joan Ricardo Roa Mora - 2024"</h3>
+</body>
+</html>
